@@ -7,6 +7,29 @@ use raylib::prelude::*;
 struct Player {
     position: Vector2,
     velocity: Vector2,
+    rotation: f32,
+}
+
+impl Player {
+    fn get_traingle_points(&self) -> (Vector2, Vector2, Vector2) {
+        let size = GAME_SETTINGS.player_size;
+        let rot = self.rotation.to_radians();
+
+        let p1 = Vector2 {
+            x: self.position.x + size * rot.cos(),
+            y: self.position.y + size * rot.sin(),
+        };
+        let p2 = Vector2 {
+            x: self.position.x + size * (rot + 2.0 * std::f32::consts::PI / 3.0).cos(),
+            y: self.position.y + size * (rot + 2.0 * std::f32::consts::PI / 3.0).sin(),
+        };
+        let p3 = Vector2 {
+            x: self.position.x + size * (rot + 4.0 * std::f32::consts::PI / 3.0).cos(),
+            y: self.position.y + size * (rot + 4.0 * std::f32::consts::PI / 3.0).sin(),
+        };
+
+        (p1, p2, p3)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -38,6 +61,7 @@ struct GameSettings {
     height: i32,
     player_max_velocity: Vector2,
     player_ticks_to_max_velocity: f32,
+    player_size: f32,
     max_projectiles: usize,
     max_asteroids: usize,
     keybinds: Keybinds,
@@ -55,6 +79,7 @@ const GAME_SETTINGS: GameSettings = GameSettings {
     height: 640,
     player_max_velocity: Vector2 { x: 1.0, y: 1.0 },
     player_ticks_to_max_velocity: 5.0,
+    player_size: 10.0,
     max_projectiles: 30,
     max_asteroids: 10,
     keybinds: Keybinds {
@@ -89,7 +114,7 @@ fn main() {
 }
 
 fn setup() -> GameState {
-    let player = Player { position: Vector2 { x: 50.0, y: 50.0 }, velocity: Vector2 { x: 0.0, y: 0.0 } };
+    let player = Player { position: Vector2 { x: 50.0, y: 50.0 }, velocity: Vector2 { x: 0.0, y: 0.0 }, rotation: 0.0 };
 
     let blank_asteroid = Asteroid {
         position: Vector2 { x: 0.0, y: 0.0 },
@@ -180,6 +205,15 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
     }
 
     state.player.position.y += state.player.velocity.y;
+
+    let mouse_pos = game.get_mouse_position();
+    let dx = mouse_pos.x - state.player.position.x;
+    let dy = mouse_pos.y - state.player.position.y;
+    let dist_sq = dx * dx + dy * dy;
+
+    if dist_sq > 1.0 {
+        state.player.rotation = dy.atan2(dx).to_degrees();
+    }
 }
 
 fn draw(game: &mut RaylibHandle, thread: &RaylibThread, state: &mut GameState) {
@@ -189,7 +223,8 @@ fn draw(game: &mut RaylibHandle, thread: &RaylibThread, state: &mut GameState) {
     {
         let mut draw = draw.begin_mode2D(state.camera);
         {
-            draw.draw_rectangle_v(state.player.position, Vector2 { x: 10.0, y: 10.0 }, Color::RED);
+            let (p1, p2, p3) = state.player.get_traingle_points();
+            draw.draw_triangle_lines(p1, p2, p3, Color::RED);
         }
     }
 }
