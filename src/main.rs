@@ -44,6 +44,7 @@ struct Asteroid {
     position: Vector2,
     velocity: Vector2,
     level: i32, // 0 is destroyed
+    shape_index: usize,
 }
 
 
@@ -101,7 +102,50 @@ struct GameState {
     asteroids: [Asteroid; GAME_SETTINGS.max_asteroids],
     camera: Camera2D,
     fire_timer: f32,
+    ui_asteroid_index: usize,
 }
+
+const ASTEROID_SHAPE_1: [Vector2; 9] = [
+    Vector2 { x: 0.0, y: 0.0 },   // Center
+    Vector2 { x: -20.0, y: -10.0 },
+    Vector2 { x: 5.0, y: -25.0 },
+    Vector2 { x: 25.0, y: -15.0 },
+    Vector2 { x: 20.0, y: 10.0 },
+    Vector2 { x: 5.0, y: 25.0 },
+    Vector2 { x: -15.0, y: 20.0 },
+    Vector2 { x: -25.0, y: 5.0 },
+    Vector2 { x: -20.0, y: -10.0 }, // Close the loop
+];
+
+const ASTEROID_SHAPE_2: [Vector2; 9] = [
+    Vector2 { x: 0.0, y: 0.0 },
+    Vector2 { x: -15.0, y: -20.0 },
+    Vector2 { x: 15.0, y: -20.0 },
+    Vector2 { x: 25.0, y: 0.0 },
+    Vector2 { x: 15.0, y: 20.0 },
+    Vector2 { x: -15.0, y: 20.0 },
+    Vector2 { x: -25.0, y: 5.0 },
+    Vector2 { x: -20.0, y: -5.0 },
+    Vector2 { x: -15.0, y: -20.0 },
+];
+
+const ASTEROID_SHAPE_3: [Vector2; 9] = [
+    Vector2 { x: 0.0, y: 0.0 },
+    Vector2 { x: -10.0, y: -25.0 },
+    Vector2 { x: 10.0, y: -25.0 },
+    Vector2 { x: 20.0, y: -10.0 },
+    Vector2 { x: 25.0, y: 10.0 },
+    Vector2 { x: 10.0, y: 25.0 },
+    Vector2 { x: -10.0, y: 25.0 },
+    Vector2 { x: -25.0, y: 0.0 },
+    Vector2 { x: -10.0, y: -25.0 },
+];
+
+const ASTEROID_SHAPES: &[&[Vector2]] = &[
+    &ASTEROID_SHAPE_1,
+    &ASTEROID_SHAPE_2,
+    &ASTEROID_SHAPE_3,
+];
 
 fn main() {
     let (mut game, thread) = raylib::init()
@@ -110,6 +154,7 @@ fn main() {
         .build();
 
     let mut state = setup();
+    state.ui_asteroid_index = game.get_random_value::<i32>(0..ASTEROID_SHAPES.len() as i32) as usize;
 
     while !game.window_should_close() {
         update(&mut state, &game);
@@ -125,6 +170,7 @@ fn setup() -> GameState {
         position: Vector2 { x: 0.0, y: 0.0 },
         velocity: Vector2 { x: 0.0, y: 0.0 },
         level: 0,
+        shape_index: 0,
     };
 
     let blank_projectile = Projectile {
@@ -146,6 +192,7 @@ fn setup() -> GameState {
         asteroids: [blank_asteroid; GAME_SETTINGS.max_asteroids],
         camera: camera,
         fire_timer: 0.0,
+        ui_asteroid_index: 0,
     }
 }
 
@@ -232,8 +279,8 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
             projectile.position.x += projectile.velocity.x;
             projectile.position.y += projectile.velocity.y;
 
-            if projectile.position.x < 0.0 || projectile.position.x > GAME_SETTINGS.width as f32 ||
-               projectile.position.y < 0.0 || projectile.position.y > GAME_SETTINGS.height as f32 {
+            if projectile.position.x < 0.0 || projectile.position.x > GAME_SETTINGS.bounds().x ||
+               projectile.position.y < 0.0 || projectile.position.y > GAME_SETTINGS.bounds().y {
                 projectile.alive = false;
             }
         }
@@ -256,6 +303,30 @@ fn draw(game: &mut RaylibHandle, thread: &RaylibThread, state: &mut GameState) {
                 }
             }
         }
+    }
+
+    // Draw low-poly asteroid in bottom right (screen space)
+    let asteroid_center = Vector2 {
+        x: GAME_SETTINGS.width as f32 - 50.0,
+        y: GAME_SETTINGS.height as f32 - 50.0,
+    };
+    
+    let transformed_points: Vec<Vector2> = ASTEROID_SHAPES[state.ui_asteroid_index]
+        .iter()
+        .map(|p| Vector2 {
+            x: asteroid_center.x + p.x,
+            y: asteroid_center.y + p.y,
+        })
+        .collect();
+
+    // Draw filled irregular shape using manual triangles (CCW winding)
+    for i in 1..(transformed_points.len() - 1) {
+        draw.draw_triangle(
+            transformed_points[0],
+            transformed_points[i + 1],
+            transformed_points[i],
+            Color::DARKGRAY,
+        );
     }
 }
 
