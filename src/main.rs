@@ -145,9 +145,41 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
             GAME_SETTINGS.player_ticks_to_max_velocity,
             false,
         );
+    } else {
+        let accel = GAME_SETTINGS.player_max_velocity.x / GAME_SETTINGS.player_ticks_to_max_velocity;
+        if state.player.velocity.x > 0.0 {
+            state.player.velocity.x = (state.player.velocity.x - accel).max(0.0);
+        } else if state.player.velocity.x < 0.0 {
+            state.player.velocity.x = (state.player.velocity.x + accel).min(0.0);
+        }
     }
 
     state.player.position.x += state.player.velocity.x;
+
+    if game.is_key_down(GAME_SETTINGS.keybinds.move_up) {
+        state.player.velocity.y = calculate_speed(
+            state.player.velocity.y,
+            GAME_SETTINGS.player_max_velocity.y,
+            GAME_SETTINGS.player_ticks_to_max_velocity,
+            true,
+        );
+    } else if game.is_key_down(GAME_SETTINGS.keybinds.move_down) {
+        state.player.velocity.y = calculate_speed(
+            state.player.velocity.y,
+            GAME_SETTINGS.player_max_velocity.y,
+            GAME_SETTINGS.player_ticks_to_max_velocity,
+            false,
+        );
+    } else {
+        let accel = GAME_SETTINGS.player_max_velocity.y / GAME_SETTINGS.player_ticks_to_max_velocity;
+        if state.player.velocity.y > 0.0 {
+            state.player.velocity.y = (state.player.velocity.y - accel).max(0.0);
+        } else if state.player.velocity.y < 0.0 {
+            state.player.velocity.y = (state.player.velocity.y + accel).min(0.0);
+        }
+    }
+
+    state.player.position.y += state.player.velocity.y;
 }
 
 fn draw(game: &mut RaylibHandle, thread: &RaylibThread, state: &mut GameState) {
