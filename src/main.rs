@@ -82,7 +82,7 @@ const GAME_SETTINGS: GameSettings = GameSettings {
     title: "Asteroids",
     width: 640,
     height: 640,
-    player_max_velocity: Vector2 { x: 1.0, y: 1.0 },
+    player_max_velocity: Vector2 { x: 0.4, y: 0.4 },
     player_ticks_to_max_velocity: 5.0,
     player_size: 10.0,
     projectile_speed: 5.0,
@@ -96,7 +96,7 @@ const GAME_SETTINGS: GameSettings = GameSettings {
         move_down: KeyboardKey::KEY_S,
         fire: KeyboardKey::KEY_SPACE,
     },
-    asteroid_velocity: 0.8,
+    asteroid_velocity: 0.1,
 };
 
 struct GameState {
@@ -283,10 +283,28 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
             projectile.position.x += projectile.velocity.x;
             projectile.position.y += projectile.velocity.y;
 
-            if projectile.position.x < 0.0
-                || projectile.position.x > GAME_SETTINGS.bounds().x
-                || projectile.position.y < 0.0
-                || projectile.position.y > GAME_SETTINGS.bounds().y
+            // Collision detection with asteroids
+            for asteroid in state.asteroids.iter_mut() {
+                if asteroid.level > 0 {
+                    let dx = projectile.position.x - asteroid.position.x;
+                    let dy = projectile.position.y - asteroid.position.y;
+                    let dist_sq = dx * dx + dy * dy;
+
+                    // Simple radius-based collision (assuming 20.0 radius for asteroid)
+                    let radius = asteroid.level as f32 * 10.0;
+                    if dist_sq < radius * radius {
+                        asteroid.level -= 1;
+                        projectile.alive = false;
+                        break;
+                    }
+                }
+            }
+
+            if projectile.alive
+                && (projectile.position.x < 0.0
+                    || projectile.position.x > GAME_SETTINGS.bounds().x
+                    || projectile.position.y < 0.0
+                    || projectile.position.y > GAME_SETTINGS.bounds().y)
             {
                 projectile.alive = false;
             }
@@ -307,10 +325,10 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
             asteroid.position.y += asteroid.velocity.y;
 
             let margin = 100.0;
-            let off_screen = asteroid.position.x < -margin || 
-                             asteroid.position.x > GAME_SETTINGS.width as f32 + margin ||
-                             asteroid.position.y < -margin || 
-                             asteroid.position.y > GAME_SETTINGS.height as f32 + margin;
+            let off_screen = asteroid.position.x < -margin
+                || asteroid.position.x > GAME_SETTINGS.width as f32 + margin
+                || asteroid.position.y < -margin
+                || asteroid.position.y > GAME_SETTINGS.height as f32 + margin;
 
             if off_screen {
                 asteroid.level = 0;
@@ -341,11 +359,12 @@ fn draw(game: &mut RaylibHandle, thread: &RaylibThread, state: &mut GameState) {
         if asteroid.level == 0 {
             continue;
         }
+        let level_scale = asteroid.level as f32 / 3.0;
         let transformed_points: Vec<Vector2> = ASTEROID_SHAPES[asteroid.shape_index]
             .iter()
             .map(|p| Vector2 {
-                x: asteroid.position.x + p.x,
-                y: asteroid.position.y + p.y,
+                x: asteroid.position.x + p.x * level_scale,
+                y: asteroid.position.y + p.y * level_scale,
             })
             .collect();
 
