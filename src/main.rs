@@ -1,7 +1,6 @@
 /**
 * Copyright (c) AWildDevAppears
 */
-
 use raylib::prelude::*;
 
 struct Player {
@@ -47,7 +46,6 @@ struct Asteroid {
     shape_index: usize,
 }
 
-
 struct Keybinds {
     move_left: KeyboardKey,
     move_right: KeyboardKey,
@@ -68,11 +66,15 @@ struct GameSettings {
     max_projectiles: usize,
     max_asteroids: usize,
     keybinds: Keybinds,
+    asteroid_velocity: f32,
 }
 
 impl GameSettings {
     fn bounds(&self) -> Vector2 {
-        return Vector2 { x: self.width as f32, y: self.height as f32 };
+        return Vector2 {
+            x: self.width as f32,
+            y: self.height as f32,
+        };
     }
 }
 
@@ -92,8 +94,9 @@ const GAME_SETTINGS: GameSettings = GameSettings {
         move_right: KeyboardKey::KEY_D,
         move_up: KeyboardKey::KEY_W,
         move_down: KeyboardKey::KEY_S,
-        fire: KeyboardKey::KEY_SPACE
+        fire: KeyboardKey::KEY_SPACE,
     },
+    asteroid_velocity: 0.8,
 };
 
 struct GameState {
@@ -102,11 +105,10 @@ struct GameState {
     asteroids: [Asteroid; GAME_SETTINGS.max_asteroids],
     camera: Camera2D,
     fire_timer: f32,
-    ui_asteroid_index: usize,
 }
 
 const ASTEROID_SHAPE_1: [Vector2; 9] = [
-    Vector2 { x: 0.0, y: 0.0 },   // Center
+    Vector2 { x: 0.0, y: 0.0 }, // Center
     Vector2 { x: -20.0, y: -10.0 },
     Vector2 { x: 5.0, y: -25.0 },
     Vector2 { x: 25.0, y: -15.0 },
@@ -141,11 +143,7 @@ const ASTEROID_SHAPE_3: [Vector2; 9] = [
     Vector2 { x: -10.0, y: -25.0 },
 ];
 
-const ASTEROID_SHAPES: &[&[Vector2]] = &[
-    &ASTEROID_SHAPE_1,
-    &ASTEROID_SHAPE_2,
-    &ASTEROID_SHAPE_3,
-];
+const ASTEROID_SHAPES: &[&[Vector2]] = &[&ASTEROID_SHAPE_1, &ASTEROID_SHAPE_2, &ASTEROID_SHAPE_3];
 
 fn main() {
     let (mut game, thread) = raylib::init()
@@ -154,7 +152,6 @@ fn main() {
         .build();
 
     let mut state = setup();
-    state.ui_asteroid_index = game.get_random_value::<i32>(0..ASTEROID_SHAPES.len() as i32) as usize;
 
     while !game.window_should_close() {
         update(&mut state, &game);
@@ -164,7 +161,11 @@ fn main() {
 }
 
 fn setup() -> GameState {
-    let player = Player { position: Vector2 { x: 50.0, y: 50.0 }, velocity: Vector2 { x: 0.0, y: 0.0 }, rotation: 0.0 };
+    let player = Player {
+        position: Vector2 { x: 50.0, y: 50.0 },
+        velocity: Vector2 { x: 0.0, y: 0.0 },
+        rotation: 0.0,
+    };
 
     let blank_asteroid = Asteroid {
         position: Vector2 { x: 0.0, y: 0.0 },
@@ -192,8 +193,7 @@ fn setup() -> GameState {
         asteroids: [blank_asteroid; GAME_SETTINGS.max_asteroids],
         camera: camera,
         fire_timer: 0.0,
-        ui_asteroid_index: 0,
-    }
+    };
 }
 
 fn update(state: &mut GameState, game: &RaylibHandle) {
@@ -212,7 +212,8 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
             false,
         );
     } else {
-        let accel = GAME_SETTINGS.player_max_velocity.x / GAME_SETTINGS.player_ticks_to_max_velocity;
+        let accel =
+            GAME_SETTINGS.player_max_velocity.x / GAME_SETTINGS.player_ticks_to_max_velocity;
         if state.player.velocity.x > 0.0 {
             state.player.velocity.x = (state.player.velocity.x - accel).max(0.0);
         } else if state.player.velocity.x < 0.0 {
@@ -237,7 +238,8 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
             false,
         );
     } else {
-        let accel = GAME_SETTINGS.player_max_velocity.y / GAME_SETTINGS.player_ticks_to_max_velocity;
+        let accel =
+            GAME_SETTINGS.player_max_velocity.y / GAME_SETTINGS.player_ticks_to_max_velocity;
         if state.player.velocity.y > 0.0 {
             state.player.velocity.y = (state.player.velocity.y - accel).max(0.0);
         } else if state.player.velocity.y < 0.0 {
@@ -279,8 +281,11 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
             projectile.position.x += projectile.velocity.x;
             projectile.position.y += projectile.velocity.y;
 
-            if projectile.position.x < 0.0 || projectile.position.x > GAME_SETTINGS.bounds().x ||
-               projectile.position.y < 0.0 || projectile.position.y > GAME_SETTINGS.bounds().y {
+            if projectile.position.x < 0.0
+                || projectile.position.x > GAME_SETTINGS.bounds().x
+                || projectile.position.y < 0.0
+                || projectile.position.y > GAME_SETTINGS.bounds().y
+            {
                 projectile.alive = false;
             }
         }
@@ -305,28 +310,23 @@ fn draw(game: &mut RaylibHandle, thread: &RaylibThread, state: &mut GameState) {
         }
     }
 
-    // Draw low-poly asteroid in bottom right (screen space)
-    let asteroid_center = Vector2 {
-        x: GAME_SETTINGS.width as f32 - 50.0,
-        y: GAME_SETTINGS.height as f32 - 50.0,
-    };
-    
-    let transformed_points: Vec<Vector2> = ASTEROID_SHAPES[state.ui_asteroid_index]
-        .iter()
-        .map(|p| Vector2 {
-            x: asteroid_center.x + p.x,
-            y: asteroid_center.y + p.y,
-        })
-        .collect();
+    for asteroid in state.asteroids {
+        let transformed_points: Vec<Vector2> = ASTEROID_SHAPES[asteroid.shape_index]
+            .iter()
+            .map(|p| Vector2 {
+                x: asteroid.position.x + p.x,
+                y: asteroid.position.y + p.y,
+            })
+            .collect();
 
-    // Draw filled irregular shape using manual triangles (CCW winding)
-    for i in 1..(transformed_points.len() - 1) {
-        draw.draw_triangle(
-            transformed_points[0],
-            transformed_points[i + 1],
-            transformed_points[i],
-            Color::DARKGRAY,
-        );
+        for i in 1..(transformed_points.len() - 1) {
+            draw.draw_triangle(
+                transformed_points[0],
+                transformed_points[i + 1],
+                transformed_points[i],
+                Color::DARKGRAY,
+            );
+        }
     }
 }
 
@@ -340,4 +340,65 @@ fn calculate_speed(speed: f32, max_speed: f32, time_to_max_speed: f32, invert: b
     }
 
     return new_speed.min(max_speed);
+}
+
+#[derive(Clone, Copy)]
+enum SpawnPoint {
+    Top,
+    Bottom,
+    Left,
+    Right,
+}
+
+const SPAWN_POINTS: [SpawnPoint; 4] = [
+    SpawnPoint::Top,
+    SpawnPoint::Bottom,
+    SpawnPoint::Left,
+    SpawnPoint::Right,
+];
+
+fn spawn_asteroid(game: &RaylibHandle) -> Asteroid {
+    let side_index = game.get_random_value::<i32>(0..4);
+    let side = SPAWN_POINTS[side_index as usize];
+
+    let mut pos = Vector2 { x: 0.0, y: 0.0 };
+    let parallel_angle: f32;
+
+    match side {
+        SpawnPoint::Top => {
+            pos.x = game.get_random_value::<i32>(0..GAME_SETTINGS.width) as f32;
+            pos.y = -GAME_SETTINGS.bounds().y / 10;
+            parallel_angle = 0.0;
+        }
+        SpawnPoint::Right => {
+            pos.x = GAME_SETTINGS.bounds().x + (GAME_SETTINGS.bounds().x / 10.0);
+            pos.y = game.get_random_value::<i32>(0..GAME_SETTINGS.height) as f32;
+            parallel_angle = 90.0;
+        }
+        SpawnPoint::Bottom => {
+            pos.x = game.get_random_value::<i32>(0..GAME_SETTINGS.width) as f32;
+            pos.y = GAME_SETTINGS.bounds().y + (GAME_SETTINGS.bounds().y / 10.0);
+            parallel_angle = 180.0;
+        }
+        SpawnPoint::Left => {
+            pos.x = GAME_SETTINGS.bounds().x / 10.0;
+            pos.y = game.get_random_value::<i32>(0..GAME_SETTINGS.height) as f32;
+            parallel_angle = 270.0;
+        }
+    }
+
+    let modifier = 90.0 + (game.get_random_value::<i32>(-45..46) as f32);
+    let final_angle = (parallel_angle + modifier).to_radians();
+
+    let velocity = Vector2 {
+        x: final_angle.cos() * GAME_SETTINGS.asteroid_velocity,
+        y: final_angle.sin() * GAME_SETTINGS.asteroid_velocity,
+    };
+
+    Asteroid {
+        position: pos,
+        velocity: velocity,
+        level: 3,
+        shape_index: game.get_random_value::<i32>(0..ASTEROID_SHAPES.len() as i32) as usize,
+    }
 }
