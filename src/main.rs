@@ -44,7 +44,6 @@ struct Asteroid {
     velocity: Vector2,
     level: i32, // 0 is destroyed
     shape_index: usize,
-    spawn_side: SpawnPoint,
 }
 
 struct Keybinds {
@@ -174,7 +173,6 @@ fn setup() -> GameState {
         velocity: Vector2 { x: 0.0, y: 0.0 },
         level: 0,
         shape_index: 0,
-        spawn_side: SpawnPoint::Top,
     };
 
     let blank_projectile = Projectile {
@@ -308,14 +306,13 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
             asteroid.position.x += asteroid.velocity.x;
             asteroid.position.y += asteroid.velocity.y;
 
-            let off_opposite = match asteroid.spawn_side {
-                SpawnPoint::Top => asteroid.position.y > GAME_SETTINGS.height as f32,
-                SpawnPoint::Bottom => asteroid.position.y < 0.0,
-                SpawnPoint::Left => asteroid.position.x > GAME_SETTINGS.width as f32,
-                SpawnPoint::Right => asteroid.position.x < 0.0,
-            };
+            let margin = 100.0;
+            let off_screen = asteroid.position.x < -margin || 
+                             asteroid.position.x > GAME_SETTINGS.width as f32 + margin ||
+                             asteroid.position.y < -margin || 
+                             asteroid.position.y > GAME_SETTINGS.height as f32 + margin;
 
-            if off_opposite {
+            if off_screen {
                 asteroid.level = 0;
             }
         }
@@ -395,37 +392,40 @@ fn spawn_asteroid(game: &RaylibHandle) -> Asteroid {
     let side = SPAWN_POINTS[side_index as usize];
 
     let mut pos = Vector2 { x: 0.0, y: 0.0 };
-    let parallel_angle: f32;
 
     match side {
         SpawnPoint::Top => {
             pos.x = game.get_random_value::<i32>(0..GAME_SETTINGS.width - 1) as f32;
             pos.y = -GAME_SETTINGS.bounds().y / 10.0;
-            parallel_angle = 0.0;
         }
         SpawnPoint::Right => {
             pos.x = GAME_SETTINGS.bounds().x + (GAME_SETTINGS.bounds().x / 10.0);
             pos.y = game.get_random_value::<i32>(0..GAME_SETTINGS.height - 1) as f32;
-            parallel_angle = 90.0;
         }
         SpawnPoint::Bottom => {
             pos.x = game.get_random_value::<i32>(0..GAME_SETTINGS.width - 1) as f32;
             pos.y = GAME_SETTINGS.bounds().y + (GAME_SETTINGS.bounds().y / 10.0);
-            parallel_angle = 180.0;
         }
         SpawnPoint::Left => {
             pos.x = -GAME_SETTINGS.bounds().x / 10.0;
             pos.y = game.get_random_value::<i32>(0..GAME_SETTINGS.height - 1) as f32;
-            parallel_angle = 270.0;
         }
     }
 
-    let modifier = 90.0 + (game.get_random_value::<i32>(-45..45) as f32);
-    let final_angle = (parallel_angle + modifier).to_radians();
+    // Target a random point inside the screen to ensure it crosses the screen
+    let target = Vector2 {
+        x: game.get_random_value::<i32>(0..GAME_SETTINGS.width - 1) as f32,
+        y: game.get_random_value::<i32>(0..GAME_SETTINGS.height - 1) as f32,
+    };
 
+    let diff = Vector2 {
+        x: target.x - pos.x,
+        y: target.y - pos.y,
+    };
+    let dist = (diff.x * diff.x + diff.y * diff.y).sqrt();
     let velocity = Vector2 {
-        x: final_angle.cos() * GAME_SETTINGS.asteroid_velocity,
-        y: final_angle.sin() * GAME_SETTINGS.asteroid_velocity,
+        x: (diff.x / dist) * GAME_SETTINGS.asteroid_velocity,
+        y: (diff.y / dist) * GAME_SETTINGS.asteroid_velocity,
     };
 
     Asteroid {
@@ -433,6 +433,5 @@ fn spawn_asteroid(game: &RaylibHandle) -> Asteroid {
         velocity: velocity,
         level: 3,
         shape_index: game.get_random_value::<i32>(0..(ASTEROID_SHAPES.len() - 1) as i32) as usize,
-        spawn_side: side,
     }
 }
