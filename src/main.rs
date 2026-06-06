@@ -110,38 +110,38 @@ struct GameState {
 
 const ASTEROID_SHAPE_1: [Vector2; 9] = [
     Vector2 { x: 0.0, y: 0.0 }, // Center
-    Vector2 { x: -20.0, y: -10.0 },
-    Vector2 { x: 5.0, y: -25.0 },
-    Vector2 { x: 25.0, y: -15.0 },
-    Vector2 { x: 20.0, y: 10.0 },
-    Vector2 { x: 5.0, y: 25.0 },
-    Vector2 { x: -15.0, y: 20.0 },
-    Vector2 { x: -25.0, y: 5.0 },
-    Vector2 { x: -20.0, y: -10.0 }, // Close the loop
+    Vector2 { x: -40.0, y: -20.0 },
+    Vector2 { x: 10.0, y: -50.0 },
+    Vector2 { x: 50.0, y: -30.0 },
+    Vector2 { x: 40.0, y: 20.0 },
+    Vector2 { x: 10.0, y: 50.0 },
+    Vector2 { x: -30.0, y: 40.0 },
+    Vector2 { x: -50.0, y: 10.0 },
+    Vector2 { x: -40.0, y: -20.0 }, // Close the loop
 ];
 
 const ASTEROID_SHAPE_2: [Vector2; 9] = [
     Vector2 { x: 0.0, y: 0.0 },
-    Vector2 { x: -15.0, y: -20.0 },
-    Vector2 { x: 15.0, y: -20.0 },
-    Vector2 { x: 25.0, y: 0.0 },
-    Vector2 { x: 15.0, y: 20.0 },
-    Vector2 { x: -15.0, y: 20.0 },
-    Vector2 { x: -25.0, y: 5.0 },
-    Vector2 { x: -20.0, y: -5.0 },
-    Vector2 { x: -15.0, y: -20.0 },
+    Vector2 { x: -30.0, y: -40.0 },
+    Vector2 { x: 30.0, y: -40.0 },
+    Vector2 { x: 50.0, y: 0.0 },
+    Vector2 { x: 30.0, y: 40.0 },
+    Vector2 { x: -30.0, y: 40.0 },
+    Vector2 { x: -50.0, y: 10.0 },
+    Vector2 { x: -40.0, y: -10.0 },
+    Vector2 { x: -30.0, y: -40.0 },
 ];
 
 const ASTEROID_SHAPE_3: [Vector2; 9] = [
     Vector2 { x: 0.0, y: 0.0 },
-    Vector2 { x: -10.0, y: -25.0 },
-    Vector2 { x: 10.0, y: -25.0 },
-    Vector2 { x: 20.0, y: -10.0 },
-    Vector2 { x: 25.0, y: 10.0 },
-    Vector2 { x: 10.0, y: 25.0 },
-    Vector2 { x: -10.0, y: 25.0 },
-    Vector2 { x: -25.0, y: 0.0 },
-    Vector2 { x: -10.0, y: -25.0 },
+    Vector2 { x: -20.0, y: -50.0 },
+    Vector2 { x: 20.0, y: -50.0 },
+    Vector2 { x: 40.0, y: -20.0 },
+    Vector2 { x: 50.0, y: 20.0 },
+    Vector2 { x: 20.0, y: 50.0 },
+    Vector2 { x: -20.0, y: 50.0 },
+    Vector2 { x: -50.0, y: 0.0 },
+    Vector2 { x: -20.0, y: -50.0 },
 ];
 
 const ASTEROID_SHAPES: &[&[Vector2]] = &[&ASTEROID_SHAPE_1, &ASTEROID_SHAPE_2, &ASTEROID_SHAPE_3];
@@ -290,8 +290,8 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
                     let dy = projectile.position.y - asteroid.position.y;
                     let dist_sq = dx * dx + dy * dy;
 
-                    // Simple radius-based collision (assuming 20.0 radius for asteroid)
-                    let radius = asteroid.level as f32 * 10.0;
+                    // Simple radius-based collision (assuming 40.0 base radius for asteroid)
+                    let radius = asteroid.level as f32 * 20.0;
                     if dist_sq < radius * radius {
                         asteroid.level -= 1;
                         projectile.alive = false;
