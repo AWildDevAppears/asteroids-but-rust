@@ -106,6 +106,7 @@ struct GameState {
     camera: Camera2D,
     fire_timer: f32,
     spawn_timer: f32,
+    is_game_over: bool,
 }
 
 const ASTEROID_SHAPE_1: [Vector2; 9] = [
@@ -195,10 +196,15 @@ fn setup() -> GameState {
         camera: camera,
         fire_timer: 0.0,
         spawn_timer: 2.0,
+        is_game_over: false,
     };
 }
 
 fn update(state: &mut GameState, game: &RaylibHandle) {
+    if state.is_game_over {
+        return;
+    }
+
     if game.is_key_down(GAME_SETTINGS.keybinds.move_left) {
         state.player.velocity.x = calculate_speed(
             state.player.velocity.x,
@@ -250,6 +256,19 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
     }
 
     state.player.position.y += state.player.velocity.y;
+
+    // Player collision with asteroids
+    for asteroid in state.asteroids.iter() {
+        if asteroid.level > 0 {
+            let dx = state.player.position.x - asteroid.position.x;
+            let dy = state.player.position.y - asteroid.position.y;
+            let dist_sq = dx * dx + dy * dy;
+            let radius = (asteroid.level as f32 * 20.0) + GAME_SETTINGS.player_size;
+            if dist_sq < radius * radius {
+                state.is_game_over = true;
+            }
+        }
+    }
 
     let mouse_pos = game.get_mouse_position();
     let dx = mouse_pos.x - state.player.position.x;
@@ -376,6 +395,23 @@ fn draw(game: &mut RaylibHandle, thread: &RaylibThread, state: &mut GameState) {
                 Color::DARKGRAY,
             );
         }
+    }
+
+    if state.is_game_over {
+        draw.draw_text(
+            "GAME OVER",
+            GAME_SETTINGS.width / 2 - 100,
+            GAME_SETTINGS.height / 2 - 20,
+            40,
+            Color::RED,
+        );
+        draw.draw_text(
+            "Press ESC to exit",
+            GAME_SETTINGS.width / 2 - 80,
+            GAME_SETTINGS.height / 2 + 30,
+            20,
+            Color::DARKGRAY,
+        );
     }
 }
 
