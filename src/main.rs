@@ -316,7 +316,7 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
         if let Some(index) = state.asteroids.iter().position(|a| a.level == 0) {
             state.asteroids[index] = spawn_asteroid(game);
         }
-        state.spawn_timer = 2.0;
+        state.spawn_timer = 0.5;
     }
 
     for asteroid in state.asteroids.iter_mut() {
@@ -450,7 +450,7 @@ fn spawn_asteroid(game: &RaylibHandle) -> Asteroid {
     Asteroid {
         position: pos,
         velocity: velocity,
-        level: 3,
+        level: game.get_random_value::<i32>(1..3),
         shape_index: game.get_random_value::<i32>(0..(ASTEROID_SHAPES.len() - 1) as i32) as usize,
     }
 }
