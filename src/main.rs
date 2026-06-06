@@ -44,6 +44,7 @@ struct Asteroid {
     velocity: Vector2,
     level: i32, // 0 is destroyed
     shape_index: usize,
+    spawn_side: SpawnPoint,
 }
 
 struct Keybinds {
@@ -105,6 +106,7 @@ struct GameState {
     asteroids: [Asteroid; GAME_SETTINGS.max_asteroids],
     camera: Camera2D,
     fire_timer: f32,
+    spawn_timer: f32,
 }
 
 const ASTEROID_SHAPE_1: [Vector2; 9] = [
@@ -172,6 +174,7 @@ fn setup() -> GameState {
         velocity: Vector2 { x: 0.0, y: 0.0 },
         level: 0,
         shape_index: 0,
+        spawn_side: SpawnPoint::Top,
     };
 
     let blank_projectile = Projectile {
@@ -193,6 +196,7 @@ fn setup() -> GameState {
         asteroids: [blank_asteroid; GAME_SETTINGS.max_asteroids],
         camera: camera,
         fire_timer: 0.0,
+        spawn_timer: 2.0,
     };
 }
 
@@ -290,6 +294,32 @@ fn update(state: &mut GameState, game: &RaylibHandle) {
             }
         }
     }
+
+    state.spawn_timer -= game.get_frame_time();
+    if state.spawn_timer <= 0.0 {
+        if let Some(index) = state.asteroids.iter().position(|a| a.level == 0) {
+            state.asteroids[index] = spawn_asteroid(game);
+        }
+        state.spawn_timer = 2.0;
+    }
+
+    for asteroid in state.asteroids.iter_mut() {
+        if asteroid.level > 0 {
+            asteroid.position.x += asteroid.velocity.x;
+            asteroid.position.y += asteroid.velocity.y;
+
+            let off_opposite = match asteroid.spawn_side {
+                SpawnPoint::Top => asteroid.position.y > GAME_SETTINGS.height as f32,
+                SpawnPoint::Bottom => asteroid.position.y < 0.0,
+                SpawnPoint::Left => asteroid.position.x > GAME_SETTINGS.width as f32,
+                SpawnPoint::Right => asteroid.position.x < 0.0,
+            };
+
+            if off_opposite {
+                asteroid.level = 0;
+            }
+        }
+    }
 }
 
 fn draw(game: &mut RaylibHandle, thread: &RaylibThread, state: &mut GameState) {
@@ -311,6 +341,9 @@ fn draw(game: &mut RaylibHandle, thread: &RaylibThread, state: &mut GameState) {
     }
 
     for asteroid in state.asteroids {
+        if asteroid.level == 0 {
+            continue;
+        }
         let transformed_points: Vec<Vector2> = ASTEROID_SHAPES[asteroid.shape_index]
             .iter()
             .map(|p| Vector2 {
@@ -358,7 +391,7 @@ const SPAWN_POINTS: [SpawnPoint; 4] = [
 ];
 
 fn spawn_asteroid(game: &RaylibHandle) -> Asteroid {
-    let side_index = game.get_random_value::<i32>(0..4);
+    let side_index = game.get_random_value::<i32>(0..3);
     let side = SPAWN_POINTS[side_index as usize];
 
     let mut pos = Vector2 { x: 0.0, y: 0.0 };
@@ -366,28 +399,28 @@ fn spawn_asteroid(game: &RaylibHandle) -> Asteroid {
 
     match side {
         SpawnPoint::Top => {
-            pos.x = game.get_random_value::<i32>(0..GAME_SETTINGS.width) as f32;
-            pos.y = -GAME_SETTINGS.bounds().y / 10;
+            pos.x = game.get_random_value::<i32>(0..GAME_SETTINGS.width - 1) as f32;
+            pos.y = -GAME_SETTINGS.bounds().y / 10.0;
             parallel_angle = 0.0;
         }
         SpawnPoint::Right => {
             pos.x = GAME_SETTINGS.bounds().x + (GAME_SETTINGS.bounds().x / 10.0);
-            pos.y = game.get_random_value::<i32>(0..GAME_SETTINGS.height) as f32;
+            pos.y = game.get_random_value::<i32>(0..GAME_SETTINGS.height - 1) as f32;
             parallel_angle = 90.0;
         }
         SpawnPoint::Bottom => {
-            pos.x = game.get_random_value::<i32>(0..GAME_SETTINGS.width) as f32;
+            pos.x = game.get_random_value::<i32>(0..GAME_SETTINGS.width - 1) as f32;
             pos.y = GAME_SETTINGS.bounds().y + (GAME_SETTINGS.bounds().y / 10.0);
             parallel_angle = 180.0;
         }
         SpawnPoint::Left => {
-            pos.x = GAME_SETTINGS.bounds().x / 10.0;
-            pos.y = game.get_random_value::<i32>(0..GAME_SETTINGS.height) as f32;
+            pos.x = -GAME_SETTINGS.bounds().x / 10.0;
+            pos.y = game.get_random_value::<i32>(0..GAME_SETTINGS.height - 1) as f32;
             parallel_angle = 270.0;
         }
     }
 
-    let modifier = 90.0 + (game.get_random_value::<i32>(-45..46) as f32);
+    let modifier = 90.0 + (game.get_random_value::<i32>(-45..45) as f32);
     let final_angle = (parallel_angle + modifier).to_radians();
 
     let velocity = Vector2 {
@@ -399,6 +432,7 @@ fn spawn_asteroid(game: &RaylibHandle) -> Asteroid {
         position: pos,
         velocity: velocity,
         level: 3,
-        shape_index: game.get_random_value::<i32>(0..ASTEROID_SHAPES.len() as i32) as usize,
+        shape_index: game.get_random_value::<i32>(0..(ASTEROID_SHAPES.len() - 1) as i32) as usize,
+        spawn_side: side,
     }
 }
